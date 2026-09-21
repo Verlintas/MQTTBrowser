@@ -4,7 +4,7 @@
   <img src="logo.png" width="128" alt="MQTT Browser Logo">
 </p>
 
-[![version](https://img.shields.io/badge/version-1.16-brightgreen.svg)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.17-brightgreen.svg)](CHANGELOG.md)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 A native Android MQTT client that provides a structured topic browser with message history.
@@ -29,6 +29,10 @@ Inspired by [MQTT Explorer](https://github.com/thomasnordquist/MQTT-Explorer) by
 - **Manual Reconnect** — Reconnect button when connection is lost
 - **Dark Mode** — Follows system theme
 - **Natural Sort** — "1_energy" sorts before "19_energy"
+- **TLS/SSL Encryption** — Secure MQTT connections with `ssl://` protocol
+- **Trust All Certificates** — Accept self-signed certs for Homelab setups
+- **CA Certificate Import** — Import your own CA via Android file picker (PEM/DER)
+- **Retained Badge** — 📌 shown next to retained messages in tree and detail view
 
 | Connection | Topic Tree | Message Detail |
 |:---:|:---:|:---:|
