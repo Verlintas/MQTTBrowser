@@ -100,7 +100,19 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
     fun onTrustAllChange(trustAll: Boolean) { _trustAll.value = trustAll }
-    fun onCaCertUriChange(uri: String) { _caCertUri.value = uri }
+    fun onCaCertUriChange(uri: String) {
+        // Copy cert to internal storage immediately and store internal path
+        try {
+            val context = getApplication<Application>()
+            val internalFile = java.io.File(context.filesDir, "custom_ca.crt")
+            context.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use { inp ->
+                internalFile.outputStream().use { out -> inp.copyTo(out) }
+            }
+            _caCertUri.value = internalFile.absolutePath
+        } catch (e: Exception) {
+            _caCertUri.value = uri
+        }
+    }
 
     fun connect() {
         val settings = ConnectionSettings(

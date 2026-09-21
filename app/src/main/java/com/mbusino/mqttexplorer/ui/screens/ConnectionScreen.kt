@@ -112,6 +112,7 @@ fun ConnectionScreen(
 
     LaunchedEffect(connectionState) {
         if (connectionState == ConnectionState.CONNECTED) {
+            viewModel.saveCurrentConnection()
             onConnected()
         }
     }
@@ -357,25 +358,12 @@ fun ConnectionScreen(
             }
 
             item {
-                Row(
+                Button(
+                    onClick = { viewModel.connect() },
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    enabled = connectionState != ConnectionState.CONNECTING
                 ) {
-                    Button(
-                        onClick = { viewModel.connect() },
-                        modifier = Modifier.weight(1f),
-                        enabled = connectionState != ConnectionState.CONNECTING
-                    ) {
-                        Text("Connect")
-                    }
-                    IconButton(
-                        onClick = { viewModel.saveCurrentConnection() }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = "Save connection"
-                        )
-                    }
+                    Text("Connect")
                 }
             }
 

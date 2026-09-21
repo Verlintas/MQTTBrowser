@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import android.graphics.BitmapFactory
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -72,6 +73,10 @@ fun TreeScreen(
     var publishQos by remember { mutableStateOf(1) }
     var publishRetain by remember { mutableStateOf(false) }
     var publishResult by remember { mutableStateOf<String?>(null) }
+
+    BackHandler {
+        onDisconnect()
+    }
 
     Scaffold(
         topBar = {

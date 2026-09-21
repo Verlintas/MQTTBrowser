@@ -290,9 +290,21 @@ class MqttManager private constructor() {
     fun createCustomCaSocketFactory(caCertUri: String): SSLSocketFactory {
         val context = com.mbusino.mqttexplorer.MqttExplorerApp.getAppContext()
         val cf = CertificateFactory.getInstance("X.509")
-        val cert = context.contentResolver.openInputStream(android.net.Uri.parse(caCertUri))?.use {
-            cf.generateCertificate(it) as X509Certificate
-        } ?: throw IllegalArgumentException("Could not read CA certificate")
+        val internalFile = java.io.File(context.filesDir, "custom_ca.crt")
+
+        // If caCertUri is an internal path, load from file directly
+        val cert = if (caCertUri.startsWith(context.filesDir.absolutePath) && internalFile.exists()) {
+            internalFile.inputStream().use { cf.generateCertificate(it) as X509Certificate }
+        } else {
+            // Copy from content URI to internal storage
+            val loaded = context.contentResolver.openInputStream(android.net.Uri.parse(caCertUri))?.use {
+                cf.generateCertificate(it) as X509Certificate
+            } ?: throw IllegalArgumentException("Could not read CA certificate")
+            context.contentResolver.openInputStream(android.net.Uri.parse(caCertUri))?.use { inp ->
+                internalFile.outputStream().use { out -> inp.copyTo(out) }
+            }
+            loaded
+        }
 
         val keyStore = KeyStore.getInstance(KeyStore.getDefaultType()).apply {
             load(null, null)
