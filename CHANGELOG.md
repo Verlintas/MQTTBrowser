@@ -7,6 +7,7 @@ All notable changes to MQTT Browser will be documented in this file.
 ### Added
 - TLS/SSL encryption toggle for MQTT connections (ssl:// protocol)
 - "Trust all certificates" option for self-signed certs (Homelab setups)
+- CA certificate import via Android file picker (PEM/DER)
 
 ## [1.16] - 2026-08-07
 

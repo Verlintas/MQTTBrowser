@@ -18,12 +18,15 @@ import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttSecurityException
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import java.security.SecureRandom
+import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManager
+import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
+import java.security.KeyStore
 
 enum class ConnectionState {
     DISCONNECTED,
@@ -135,6 +138,8 @@ class MqttManager private constructor() {
                 if (settings.tls) {
                     socketFactory = if (settings.trustAll) {
                         createTrustAllSocketFactory()
+                    } else if (settings.caCertUri.isNotBlank()) {
+                        createCustomCaSocketFactory(settings.caCertUri)
                     } else {
                         SSLSocketFactory.getDefault()
                     }
@@ -279,6 +284,28 @@ class MqttManager private constructor() {
         })
         val sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, trustAllCerts, SecureRandom())
+        return sslContext.socketFactory
+    }
+
+    fun createCustomCaSocketFactory(caCertUri: String): SSLSocketFactory {
+        val context = com.mbusino.mqttexplorer.MqttExplorerApp.getAppContext()
+        val cf = CertificateFactory.getInstance("X.509")
+        val cert = context.contentResolver.openInputStream(android.net.Uri.parse(caCertUri))?.use {
+            cf.generateCertificate(it) as X509Certificate
+        } ?: throw IllegalArgumentException("Could not read CA certificate")
+
+        val keyStore = KeyStore.getInstance(KeyStore.getDefaultType()).apply {
+            load(null, null)
+            setCertificateEntry("ca", cert)
+        }
+
+        val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply {
+            init(keyStore)
+        }
+
+        val sslContext = SSLContext.getInstance("TLS").apply {
+            init(null, tmf.trustManagers, SecureRandom())
+        }
         return sslContext.socketFactory
     }
 }

@@ -10,7 +10,8 @@ data class ConnectionSettings(
     val username: String = "",
     val password: String = "",
     val tls: Boolean = false,
-    val trustAll: Boolean = false
+    val trustAll: Boolean = false,
+    val caCertUri: String = ""
 ) {
     val fullUrl: String
         get() = "${if (tls) "ssl" else "tcp"}://$brokerUrl:$port"

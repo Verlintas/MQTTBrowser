@@ -79,6 +79,9 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
     private val _trustAll = MutableStateFlow(false)
     val trustAll: StateFlow<Boolean> = _trustAll.asStateFlow()
 
+    private val _caCertUri = MutableStateFlow("")
+    val caCertUri: StateFlow<String> = _caCertUri.asStateFlow()
+
     val connectionState: StateFlow<ConnectionState> = mqttManager.connectionState
     val errorMessage: StateFlow<String?> = mqttManager.errorMessage
 
@@ -89,6 +92,7 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
     fun onConnectionNameChange(name: String) { _connectionName.value = name }
     fun onTlsChange(tls: Boolean) { _tls.value = tls }
     fun onTrustAllChange(trustAll: Boolean) { _trustAll.value = trustAll }
+    fun onCaCertUriChange(uri: String) { _caCertUri.value = uri }
 
     fun connect() {
         val settings = ConnectionSettings(
@@ -98,7 +102,8 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             username = _username.value,
             password = _password.value,
             tls = _tls.value,
-            trustAll = _trustAll.value
+            trustAll = _trustAll.value,
+            caCertUri = _caCertUri.value
         )
         mqttManager.connect(settings)
     }
@@ -119,6 +124,7 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
         _connectionName.value = settings.name
         _tls.value = settings.tls
         _trustAll.value = settings.trustAll
+        _caCertUri.value = settings.caCertUri
     }
 
     fun saveCurrentConnection() {
@@ -129,7 +135,8 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             username = _username.value,
             password = _password.value,
             tls = _tls.value,
-            trustAll = _trustAll.value
+            trustAll = _trustAll.value,
+            caCertUri = _caCertUri.value
         )
         ConnectionStorage.saveConnection(prefs, settings)
         _savedConnections.value = ConnectionStorage.getConnections(prefs)
