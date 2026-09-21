@@ -8,10 +8,12 @@ data class ConnectionSettings(
     val brokerUrl: String,
     val port: String = "1883",
     val username: String = "",
-    val password: String = ""
+    val password: String = "",
+    val tls: Boolean = false,
+    val trustAll: Boolean = false
 ) {
     val fullUrl: String
-        get() = "tcp://$brokerUrl:$port"
+        get() = "${if (tls) "ssl" else "tcp"}://$brokerUrl:$port"
 }
 
 object ConnectionStorage {

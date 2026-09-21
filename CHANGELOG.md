@@ -2,6 +2,12 @@
 
 All notable changes to MQTT Browser will be documented in this file.
 
+## [1.17] - 2026-09-21
+
+### Added
+- TLS/SSL encryption toggle for MQTT connections (ssl:// protocol)
+- "Trust all certificates" option for self-signed certs (Homelab setups)
+
 ## [1.16] - 2026-08-07
 
 ### Fixed

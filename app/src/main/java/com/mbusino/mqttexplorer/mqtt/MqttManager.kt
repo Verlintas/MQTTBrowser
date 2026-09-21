@@ -17,7 +17,13 @@ import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttSecurityException
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 enum class ConnectionState {
     DISCONNECTED,
@@ -125,6 +131,13 @@ class MqttManager private constructor() {
                 }
                 if (settings.password.isNotBlank()) {
                     password = settings.password.toCharArray()
+                }
+                if (settings.tls) {
+                    socketFactory = if (settings.trustAll) {
+                        createTrustAllSocketFactory()
+                    } else {
+                        SSLSocketFactory.getDefault()
+                    }
                 }
             }
 
@@ -256,5 +269,16 @@ class MqttManager private constructor() {
 
     fun hasLastSettings(): Boolean {
         return lastSettings != null
+    }
+
+    private fun createTrustAllSocketFactory(): SSLSocketFactory {
+        val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+        })
+        val sslContext = SSLContext.getInstance("TLS")
+        sslContext.init(null, trustAllCerts, SecureRandom())
+        return sslContext.socketFactory
     }
 }

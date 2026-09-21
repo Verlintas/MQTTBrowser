@@ -27,11 +27,13 @@ import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -42,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -82,6 +85,8 @@ fun ConnectionScreen(
     val username by viewModel.username.collectAsState()
     val password by viewModel.password.collectAsState()
     val connectionName by viewModel.connectionName.collectAsState()
+    val tls by viewModel.tls.collectAsState()
+    val trustAll by viewModel.trustAll.collectAsState()
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -258,6 +263,64 @@ fun ConnectionScreen(
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation()
                 )
+            }
+
+            // TLS toggle
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("TLS Encryption", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    if (tls) "ssl://" else "tcp://",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = tls,
+                                onCheckedChange = { viewModel.onTlsChange(it) }
+                            )
+                        }
+                        if (tls) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.onTrustAllChange(!trustAll) },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = trustAll,
+                                    onCheckedChange = { viewModel.onTrustAllChange(it) }
+                                )
+                                Column {
+                                    Text("Trust all certificates", style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        "For self-signed certs (e.g. Homelab)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             item {
