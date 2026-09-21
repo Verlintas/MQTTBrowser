@@ -90,7 +90,15 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
     fun onUsernameChange(username: String) { _username.value = username }
     fun onPasswordChange(password: String) { _password.value = password }
     fun onConnectionNameChange(name: String) { _connectionName.value = name }
-    fun onTlsChange(tls: Boolean) { _tls.value = tls }
+    fun onTlsChange(tls: Boolean) {
+        _tls.value = tls
+        // Auto-switch port: 1883 (plain) ↔ 8883 (TLS)
+        if (tls && _port.value == "1883") {
+            _port.value = "8883"
+        } else if (!tls && _port.value == "8883") {
+            _port.value = "1883"
+        }
+    }
     fun onTrustAllChange(trustAll: Boolean) { _trustAll.value = trustAll }
     fun onCaCertUriChange(uri: String) { _caCertUri.value = uri }
 
