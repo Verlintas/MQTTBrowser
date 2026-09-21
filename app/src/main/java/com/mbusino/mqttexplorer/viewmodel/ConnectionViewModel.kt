@@ -73,6 +73,15 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
     private val _connectionName = MutableStateFlow("")
     val connectionName: StateFlow<String> = _connectionName.asStateFlow()
 
+    private val _tls = MutableStateFlow(false)
+    val tls: StateFlow<Boolean> = _tls.asStateFlow()
+
+    private val _trustAll = MutableStateFlow(false)
+    val trustAll: StateFlow<Boolean> = _trustAll.asStateFlow()
+
+    private val _caCertUri = MutableStateFlow("")
+    val caCertUri: StateFlow<String> = _caCertUri.asStateFlow()
+
     val connectionState: StateFlow<ConnectionState> = mqttManager.connectionState
     val errorMessage: StateFlow<String?> = mqttManager.errorMessage
 
@@ -81,6 +90,29 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
     fun onUsernameChange(username: String) { _username.value = username }
     fun onPasswordChange(password: String) { _password.value = password }
     fun onConnectionNameChange(name: String) { _connectionName.value = name }
+    fun onTlsChange(tls: Boolean) {
+        _tls.value = tls
+        // Auto-switch port: 1883 (plain) ↔ 8883 (TLS)
+        if (tls && _port.value == "1883") {
+            _port.value = "8883"
+        } else if (!tls && _port.value == "8883") {
+            _port.value = "1883"
+        }
+    }
+    fun onTrustAllChange(trustAll: Boolean) { _trustAll.value = trustAll }
+    fun onCaCertUriChange(uri: String) {
+        // Copy cert to internal storage immediately and store internal path
+        try {
+            val context = getApplication<Application>()
+            val internalFile = java.io.File(context.filesDir, "custom_ca.crt")
+            context.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use { inp ->
+                internalFile.outputStream().use { out -> inp.copyTo(out) }
+            }
+            _caCertUri.value = internalFile.absolutePath
+        } catch (e: Exception) {
+            _caCertUri.value = uri
+        }
+    }
 
     fun connect() {
         val settings = ConnectionSettings(
@@ -88,7 +120,10 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             brokerUrl = _brokerUrl.value,
             port = _port.value,
             username = _username.value,
-            password = _password.value
+            password = _password.value,
+            tls = _tls.value,
+            trustAll = _trustAll.value,
+            caCertUri = _caCertUri.value
         )
         mqttManager.connect(settings)
     }
@@ -107,6 +142,9 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
         _username.value = settings.username
         _password.value = settings.password
         _connectionName.value = settings.name
+        _tls.value = settings.tls
+        _trustAll.value = settings.trustAll
+        _caCertUri.value = settings.caCertUri
     }
 
     fun saveCurrentConnection() {
@@ -115,7 +153,10 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             brokerUrl = _brokerUrl.value,
             port = _port.value,
             username = _username.value,
-            password = _password.value
+            password = _password.value,
+            tls = _tls.value,
+            trustAll = _trustAll.value,
+            caCertUri = _caCertUri.value
         )
         ConnectionStorage.saveConnection(prefs, settings)
         _savedConnections.value = ConnectionStorage.getConnections(prefs)

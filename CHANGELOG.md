@@ -2,6 +2,23 @@
 
 All notable changes to MQTT Browser will be documented in this file.
 
+## [1.17] - 2026-09-21
+
+### Added
+- TLS/SSL encryption toggle for MQTT connections (ssl:// protocol)
+- "Trust all certificates" option for self-signed certs (Homelab setups)
+- CA certificate import via Android file picker (PEM/DER)
+- Retained badge (📌) shown in topic tree and detail view
+- Port auto-switches 1883 ↔ 8883 when TLS toggle changes
+
+### Changed
+- Connection auto-saved on successful connect (save button removed)
+- CA certificate copied to app-internal storage (persists across restarts)
+
+### Fixed
+- Back button in tree view now disconnects and returns to connection screen
+- APK signing (debug keystore)
+
 ## [1.16] - 2026-08-07
 
 ### Fixed

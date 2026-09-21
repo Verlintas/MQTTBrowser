@@ -17,7 +17,16 @@ import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttSecurityException
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+import java.security.SecureRandom
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.TrustManager
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
+import java.security.KeyStore
 
 enum class ConnectionState {
     DISCONNECTED,
@@ -106,7 +115,7 @@ class MqttManager private constructor() {
                         } catch (_: Exception) {
                             String(bytes)
                         }
-                        handleIncomingMessage(topic, payload, bytes)
+                        handleIncomingMessage(topic, payload, bytes, message.isRetained)
                     }
 
                     override fun deliveryComplete(token: IMqttDeliveryToken?) {
@@ -125,6 +134,15 @@ class MqttManager private constructor() {
                 }
                 if (settings.password.isNotBlank()) {
                     password = settings.password.toCharArray()
+                }
+                if (settings.tls) {
+                    socketFactory = if (settings.trustAll) {
+                        createTrustAllSocketFactory()
+                    } else if (settings.caCertUri.isNotBlank()) {
+                        createCustomCaSocketFactory(settings.caCertUri)
+                    } else {
+                        SSLSocketFactory.getDefault()
+                    }
                 }
             }
 
@@ -213,8 +231,8 @@ class MqttManager private constructor() {
         }
     }
 
-    private fun handleIncomingMessage(topic: String, payload: String, rawBytes: ByteArray? = null) {
-        val msg = TopicMessage(payload, rawPayload = rawBytes)
+    private fun handleIncomingMessage(topic: String, payload: String, rawBytes: ByteArray? = null, isRetained: Boolean = false) {
+        val msg = TopicMessage(payload, rawPayload = rawBytes, isRetained = isRetained)
         val messages = topicMessages.getOrPut(topic) { mutableListOf() }
         messages.add(msg)
         if (messages.size > 500) {
@@ -256,5 +274,50 @@ class MqttManager private constructor() {
 
     fun hasLastSettings(): Boolean {
         return lastSettings != null
+    }
+
+    private fun createTrustAllSocketFactory(): SSLSocketFactory {
+        val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+        })
+        val sslContext = SSLContext.getInstance("TLS")
+        sslContext.init(null, trustAllCerts, SecureRandom())
+        return sslContext.socketFactory
+    }
+
+    fun createCustomCaSocketFactory(caCertUri: String): SSLSocketFactory {
+        val context = com.mbusino.mqttexplorer.MqttExplorerApp.getAppContext()
+        val cf = CertificateFactory.getInstance("X.509")
+        val internalFile = java.io.File(context.filesDir, "custom_ca.crt")
+
+        // If caCertUri is an internal path, load from file directly
+        val cert = if (caCertUri.startsWith(context.filesDir.absolutePath) && internalFile.exists()) {
+            internalFile.inputStream().use { cf.generateCertificate(it) as X509Certificate }
+        } else {
+            // Copy from content URI to internal storage
+            val loaded = context.contentResolver.openInputStream(android.net.Uri.parse(caCertUri))?.use {
+                cf.generateCertificate(it) as X509Certificate
+            } ?: throw IllegalArgumentException("Could not read CA certificate")
+            context.contentResolver.openInputStream(android.net.Uri.parse(caCertUri))?.use { inp ->
+                internalFile.outputStream().use { out -> inp.copyTo(out) }
+            }
+            loaded
+        }
+
+        val keyStore = KeyStore.getInstance(KeyStore.getDefaultType()).apply {
+            load(null, null)
+            setCertificateEntry("ca", cert)
+        }
+
+        val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply {
+            init(keyStore)
+        }
+
+        val sslContext = SSLContext.getInstance("TLS").apply {
+            init(null, tmf.trustManagers, SecureRandom())
+        }
+        return sslContext.socketFactory
     }
 }
