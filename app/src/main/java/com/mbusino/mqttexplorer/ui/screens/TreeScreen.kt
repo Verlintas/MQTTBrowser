@@ -73,6 +73,7 @@ fun TreeScreen(
     var publishQos by remember { mutableStateOf(1) }
     var publishRetain by remember { mutableStateOf(false) }
     var publishResult by remember { mutableStateOf<String?>(null) }
+    var showDeleteRetainedDialog by remember { mutableStateOf<String?>(null) }
 
     BackHandler {
         onDisconnect()
@@ -224,7 +225,8 @@ fun TreeScreen(
                         depth = 0,
                         onToggle = { viewModel.toggleNode(it) },
                         onNavigate = { path, name -> onTopicClick(path, name) },
-                        onNavigateInternal = { path, name -> onTopicClick(path, name) }
+                        onNavigateInternal = { path, name -> onTopicClick(path, name) },
+                        onLongPress = { path -> showDeleteRetainedDialog = path }
                     )
                 }
             }
@@ -264,6 +266,35 @@ fun TreeScreen(
                     showSubscribeDialog = false
                     subscribeTopic = ""
                 }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Delete retained dialog
+    showDeleteRetainedDialog?.let { topic ->
+        AlertDialog(
+            onDismissRequest = { showDeleteRetainedDialog = null },
+            title = { Text("Delete Retained Message?") },
+            text = {
+                Text(
+                    "This sends an empty retained message to $topic, " +
+                    "which tells the MQTT broker to delete the stored retained message."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.publish(topic, "", 1, true)
+                        showDeleteRetainedDialog = null
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteRetainedDialog = null }) {
                     Text("Cancel")
                 }
             }
@@ -369,17 +400,20 @@ private fun androidx.compose.foundation.lazy.LazyListScope.renderTreeNodes(
     depth: Int,
     onToggle: (String) -> Unit,
     onNavigate: (String, String) -> Unit,
-    onNavigateInternal: (String, String) -> Unit
+    onNavigateInternal: (String, String) -> Unit,
+    onLongPress: (String) -> Unit = {}
 ) {
     for (node in nodes) {
         val isExpanded = expandedNodes.contains(node.fullPath) || node.fullPath.isEmpty()
+        val hasChildren = node.children.isNotEmpty()
         item(key = node.fullPath) {
             TopicTreeItem(
                 node = node,
                 depth = depth,
                 isExpanded = isExpanded,
                 onToggle = { onToggle(node.fullPath) },
-                onNavigate = { onNavigate(node.fullPath, node.name) }
+                onNavigate = { onNavigate(node.fullPath, node.name) },
+                onLongPress = if (!hasChildren) { { onLongPress(node.fullPath) } } else null
             )
         }
         if (isExpanded && node.children.isNotEmpty()) {
@@ -389,7 +423,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.renderTreeNodes(
                 depth = depth + 1,
                 onToggle = onToggle,
                 onNavigate = onNavigate,
-                onNavigateInternal = onNavigateInternal
+                onNavigateInternal = onNavigateInternal,
+                onLongPress = onLongPress
             )
         }
     }

@@ -1,6 +1,8 @@
 package com.mbusino.mqttexplorer.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,12 +31,14 @@ import androidx.compose.ui.unit.dp
 import com.mbusino.mqttexplorer.data.TopicNode
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun TopicTreeItem(
     node: TopicNode,
     depth: Int,
     isExpanded: Boolean,
     onToggle: () -> Unit,
     onNavigate: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val hasChildren = node.children.isNotEmpty()
@@ -52,13 +56,16 @@ fun TopicTreeItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable {
-                    if (hasChildren) {
-                        onToggle()
-                    } else {
-                        onNavigate()
-                    }
-                }
+                .combinedClickable(
+                    onClick = {
+                        if (hasChildren) {
+                            onToggle()
+                        } else {
+                            onNavigate()
+                        }
+                    },
+                    onLongClick = { onLongPress?.invoke() }
+                )
                 .padding(horizontal = (8 + depth * 16).dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

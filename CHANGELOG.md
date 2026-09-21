@@ -2,6 +2,11 @@
 
 All notable changes to MQTT Browser will be documented in this file.
 
+## [1.18] - 2026-09-21
+
+### Added
+- Delete retained messages via long-press on topic tree item
+
 ## [1.17] - 2026-09-21
 
 ### Added
