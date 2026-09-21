@@ -9,9 +9,7 @@
 .externalNativeBuild
 .cxx
 /app/build
-*.apk
 *.ap_
-*.zip
 *.aab
 *.jks
 *.keystore
