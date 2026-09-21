@@ -98,13 +98,22 @@ fun TopicTreeItem(
                     )
                 } else if (node.lastMessage != null) {
                     // Leaf node: show last value
-                    Text(
-                        text = node.lastMessage!!.payload.take(80),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (node.lastMessage!!.isRetained) {
+                            Text(
+                                text = "📌 ",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Text(
+                            text = node.lastMessage!!.payload.take(80),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
                 }
             }
 

@@ -313,7 +313,7 @@ private fun MessageCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = message.formattedTime + if (previousMessage != null) "  ${formatDelta(message.timestamp, previousMessage.timestamp)}" else "",
+                    text = message.formattedTime + if (message.isRetained) "  📌" else "" + if (previousMessage != null) "  ${formatDelta(message.timestamp, previousMessage.timestamp)}" else "",
                     style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.primary

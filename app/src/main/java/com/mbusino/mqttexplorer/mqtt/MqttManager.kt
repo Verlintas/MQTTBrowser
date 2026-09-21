@@ -115,7 +115,7 @@ class MqttManager private constructor() {
                         } catch (_: Exception) {
                             String(bytes)
                         }
-                        handleIncomingMessage(topic, payload, bytes)
+                        handleIncomingMessage(topic, payload, bytes, message.isRetained)
                     }
 
                     override fun deliveryComplete(token: IMqttDeliveryToken?) {
@@ -231,8 +231,8 @@ class MqttManager private constructor() {
         }
     }
 
-    private fun handleIncomingMessage(topic: String, payload: String, rawBytes: ByteArray? = null) {
-        val msg = TopicMessage(payload, rawPayload = rawBytes)
+    private fun handleIncomingMessage(topic: String, payload: String, rawBytes: ByteArray? = null, isRetained: Boolean = false) {
+        val msg = TopicMessage(payload, rawPayload = rawBytes, isRetained = isRetained)
         val messages = topicMessages.getOrPut(topic) { mutableListOf() }
         messages.add(msg)
         if (messages.size > 500) {

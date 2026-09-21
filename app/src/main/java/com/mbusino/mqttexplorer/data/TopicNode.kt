@@ -7,7 +7,8 @@ import java.util.Locale
 data class TopicMessage(
     val payload: String,
     val rawPayload: ByteArray? = null,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val isRetained: Boolean = false
 ) {
     val isImage: Boolean
         get() {
