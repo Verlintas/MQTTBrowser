@@ -2,6 +2,11 @@
 
 All notable changes to MQTT Browser will be documented in this file.
 
+## [1.19] - 2026-09-22
+
+### Fixed
+- Reconnect button now works — disconnect() was clearing lastSettings before reconnect() could use them
+
 ## [1.18] - 2026-09-21
 
 ### Added
