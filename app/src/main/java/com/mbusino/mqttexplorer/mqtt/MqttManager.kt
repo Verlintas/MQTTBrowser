@@ -86,6 +86,7 @@ class MqttManager private constructor() {
         if (_connectionState.value == ConnectionState.CONNECTING) return
 
         disconnect()
+        lastSettings = settings  // disconnect() clears this, restore it
 
         _currentConnection.value = settings
         _connectionState.value = ConnectionState.CONNECTING
