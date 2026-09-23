@@ -157,7 +157,7 @@ fun TreeScreen(
                         }
                     ) {
                         if (subscribeMode == SubscribeMode.PATH) {
-                            Icon(Icons.Default.Tag, contentDescription = "Wildcard aktiv — zurück zur Wildcard")
+                            Icon(Icons.Default.Tag, contentDescription = "Wildcard active — switch back to wildcard")
                         } else {
                             Icon(Icons.Default.Add, contentDescription = "Subscribe to topic")
                         }
@@ -276,9 +276,9 @@ fun TreeScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     val previewPath = subscribeTopic.trim()
                         .removeSuffix("/#").removeSuffix("#").trimEnd('/')
-                        .ifBlank { "Pfad" }
+                        .ifBlank { "path" }
                     Text(
-                        text = "⚠️ Die Wildcard # wird dabei deaktiviert. Du empfangst nur noch $previewPath/#.",
+                        text = "⚠️ The wildcard # will be deactivated. You will only receive $previewPath/#.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -311,16 +311,16 @@ fun TreeScreen(
     showRetainedMenu?.let { path ->
         AlertDialog(
             onDismissRequest = { showRetainedMenu = null },
-            title = { Text("Aktion wählen") },
+            title = { Text("Choose action") },
             text = {
-                Text("Dieser Pfad hat eine retained Nachricht:\n\n$path")
+                Text("This path has a retained message:\n\n$path")
             },
             confirmButton = {
                 TextButton(onClick = {
                     showRetainedMenu = null
                     subscribeConfirmPath = path
                 }) {
-                    Text("📂 Nur auf diesen Pfad subscriben")
+                    Text("📂 Subscribe to this path only")
                 }
             },
             dismissButton = {
@@ -329,7 +329,7 @@ fun TreeScreen(
                         showRetainedMenu = null
                         showDeleteRetainedDialog = path
                     }) {
-                        Text("🗑 Retained löschen")
+                        Text("🗑 Delete retained")
                     }
                     TextButton(onClick = { showRetainedMenu = null }) {
                         Text("Cancel")
@@ -340,13 +340,13 @@ fun TreeScreen(
     }
 
     // Subscribe confirmation for a fixed path (long-press on node WITHOUT retained message,
-    // or after choosing "Nur auf diesen Pfad subscriben" in the menu above)
+    // or after choosing "Subscribe to this path only" in the menu above)
     subscribeConfirmPath?.let { path ->
         AlertDialog(
             onDismissRequest = { subscribeConfirmPath = null },
             title = { Text("Subscribe to Path") },
             text = {
-                Text("⚠️ Die Wildcard # wird dabei deaktiviert. Du empfangst nur noch $path/#.")
+                Text("⚠️ The wildcard # will be deactivated. You will only receive $path/#.")
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -364,20 +364,20 @@ fun TreeScreen(
         )
     }
 
-    // Reconnect in path mode: ask Ja/Nein — nothing is subscribed while undecided
+    // Reconnect in path mode: ask Yes/No — nothing is subscribed while undecided
     reconnectDecision?.let { filter ->
         AlertDialog(
             onDismissRequest = { /* undecided: stays open, no subscribe */ },
-            title = { Text("Pfad-Modus aktiv") },
-            text = { Text("Keine Wildcard gesetzt — nur $filter/# aktiv. Wildcard setzen?") },
+            title = { Text("Path mode active") },
+            text = { Text("No wildcard set — only $filter/# is active. Set wildcard?") },
             confirmButton = {
                 TextButton(onClick = { viewModel.resolveReconnectDecision(true) }) {
-                    Text("Ja")
+                    Text("Yes")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.resolveReconnectDecision(false) }) {
-                    Text("Nein")
+                    Text("No")
                 }
             }
         )
