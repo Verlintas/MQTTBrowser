@@ -2,6 +2,11 @@
 
 All notable changes to MQTT Browser will be documented in this file.
 
+## [1.20] - 2026-09-23
+
+### Fixed
+- Message-count counter badge no longer overlaps the `>` navigation arrow on topic list leaf rows (badge now rendered inline)
+
 ## [1.19] - 2026-09-22
 
 ### Fixed

@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -126,23 +125,20 @@ fun TopicTreeItem(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Message count badge for leaf nodes
+            // Message count badge for leaf nodes — rendered inline in the row
+            // so it can never overlap the chevron (was a BadgedBox on a 4dp Spacer)
             if (!hasChildren && node.messageCount > 0) {
-                BadgedBox(
-                    badge = {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ) {
-                            Text(
-                                text = if (node.messageCount > 999) "999+" else node.messageCount.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                            )
-                        }
-                    }
+                Badge(
+                    containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Spacer(modifier = Modifier.size(4.dp))
+                    Text(
+                        text = if (node.messageCount > 999) "999+" else node.messageCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             // Navigate arrow for leaf nodes
