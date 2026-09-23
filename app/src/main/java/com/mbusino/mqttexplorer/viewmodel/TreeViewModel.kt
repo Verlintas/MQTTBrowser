@@ -3,6 +3,7 @@ package com.mbusino.mqttexplorer.viewmodel
 import androidx.lifecycle.ViewModel
 import com.mbusino.mqttexplorer.data.TopicNode
 import com.mbusino.mqttexplorer.mqtt.MqttManager
+import com.mbusino.mqttexplorer.mqtt.SubscribeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,6 +13,13 @@ class TreeViewModel : ViewModel() {
     private val mqttManager = MqttManager.getInstance()
 
     val topicTree: StateFlow<TopicNode> = mqttManager.topicTree
+
+    val subscribeMode: StateFlow<SubscribeMode> = mqttManager.subscribeMode
+
+    val pathFilter: StateFlow<String> = mqttManager.pathFilter
+
+    /** Non-null while a reconnect in path mode waits for the Ja/Nein decision. */
+    val reconnectDecision: StateFlow<String?> = mqttManager.reconnectDecision
 
     private val _expandedNodes = MutableStateFlow(setOf<String>())
     val expandedNodes: StateFlow<Set<String>> = _expandedNodes.asStateFlow()
@@ -66,6 +74,15 @@ class TreeViewModel : ViewModel() {
     fun subscribe(topic: String) {
         mqttManager.subscribeToWildcard(topic)
     }
+
+    /** Switch to path mode: unsubscribe "#", clear tree, subscribe "<path>/#". */
+    fun switchToPathMode(path: String): Boolean = mqttManager.subscribeToPathMode(path)
+
+    /** Back to wildcard mode: unsubscribe path filter, subscribe "#" (tree kept). */
+    fun switchToWildcardMode() = mqttManager.switchToWildcardMode()
+
+    /** Reconnect popup: true = Ja (wildcard), false = Nein (keep saved filter). */
+    fun resolveReconnectDecision(useWildcard: Boolean) = mqttManager.resolveReconnectDecision(useWildcard)
 
     fun unsubscribe(topic: String) {
         mqttManager.unsubscribe(topic)

@@ -35,6 +35,12 @@ enum class ConnectionState {
     ERROR
 }
 
+/** Subscription mode: "#" (everything) or a single path filter "<path>/#". */
+enum class SubscribeMode {
+    WILDCARD,
+    PATH
+}
+
 class MqttManager private constructor() {
 
     companion object {
@@ -68,11 +74,23 @@ class MqttManager private constructor() {
     private val _subscribedTopics = MutableStateFlow(setOf<String>())
     val subscribedTopics: StateFlow<Set<String>> = _subscribedTopics.asStateFlow()
 
+    private val _subscribeMode = MutableStateFlow(SubscribeMode.WILDCARD)
+    val subscribeMode: StateFlow<SubscribeMode> = _subscribeMode.asStateFlow()
+
+    /** Path without "/#" when in path mode, empty string in wildcard mode. */
+    private val _pathFilter = MutableStateFlow("")
+    val pathFilter: StateFlow<String> = _pathFilter.asStateFlow()
+
+    /** Non-null while connected in path mode and the Ja/Nein wildcard decision is pending. */
+    private val _reconnectDecision = MutableStateFlow<String?>(null)
+    val reconnectDecision: StateFlow<String?> = _reconnectDecision.asStateFlow()
+
     fun connect(settings: ConnectionSettings) {
         if (_connectionState.value == ConnectionState.CONNECTING) return
 
         disconnect()
         lastSettings = settings
+        restoreMode(settings.subscribeMode, settings.subscribeFilter)
 
         _currentConnection.value = settings
         _connectionState.value = ConnectionState.CONNECTING
@@ -87,6 +105,7 @@ class MqttManager private constructor() {
 
         disconnect()
         lastSettings = settings  // disconnect() clears this, restore it
+        restoreMode(settings.subscribeMode, settings.subscribeFilter)
 
         _currentConnection.value = settings
         _connectionState.value = ConnectionState.CONNECTING
@@ -151,7 +170,7 @@ class MqttManager private constructor() {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     Log.i(TAG, "Connected to $serverUri")
                     _connectionState.value = ConnectionState.CONNECTED
-                    subscribeToWildcard("#")
+                    onConnectedSubscribe()
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
@@ -212,6 +231,112 @@ class MqttManager private constructor() {
         }
     }
 
+    /** Called from the Paho connect listener. Wildcard mode subscribes immediately;
+     *  path mode waits for the user's Ja/Nein decision (nothing is subscribed while undecided). */
+    private fun onConnectedSubscribe() {
+        when (_subscribeMode.value) {
+            SubscribeMode.WILDCARD -> subscribeToWildcard("#")
+            SubscribeMode.PATH -> {
+                val filter = _pathFilter.value
+                if (filter.isBlank()) {
+                    // Defensive fallback: path mode without a filter -> wildcard
+                    _subscribeMode.value = SubscribeMode.WILDCARD
+                    persistModeToLastSettings()
+                    subscribeToWildcard("#")
+                } else {
+                    Log.i(TAG, "Connected in path mode, waiting for wildcard decision (filter=$filter)")
+                    _reconnectDecision.value = filter
+                }
+            }
+        }
+    }
+
+    /** Wildcard -> path mode: unsubscribe current filter(s), clear tree, subscribe "<path>/#".
+     *  A new path replaces a previous one. Returns false for a blank/invalid path. */
+    fun subscribeToPathMode(path: String): Boolean {
+        val normalized = normalizePath(path) ?: return false
+        _reconnectDecision.value = null
+        for (topic in _subscribedTopics.value.toList()) {
+            unsubscribe(topic)
+        }
+        clearTree()
+        _subscribeMode.value = SubscribeMode.PATH
+        _pathFilter.value = normalized
+        persistModeToLastSettings()
+        subscribeToWildcard("$normalized/#")
+        return true
+    }
+
+    /** Path mode -> wildcard: unsubscribe path filter, subscribe "#" (tree is kept). */
+    fun switchToWildcardMode() {
+        _reconnectDecision.value = null
+        for (topic in _subscribedTopics.value.toList()) {
+            unsubscribe(topic)
+        }
+        _subscribeMode.value = SubscribeMode.WILDCARD
+        _pathFilter.value = ""
+        persistModeToLastSettings()
+        subscribeToWildcard("#")
+    }
+
+    /** Reconnect popup decision. Ja -> wildcard (persists, clears tree so it refills);
+     *  Nein -> keep the saved path filter. */
+    fun resolveReconnectDecision(useWildcard: Boolean) {
+        val filter = _reconnectDecision.value ?: return
+        _reconnectDecision.value = null
+        if (useWildcard) {
+            _subscribeMode.value = SubscribeMode.WILDCARD
+            _pathFilter.value = ""
+            persistModeToLastSettings()
+            clearTree()
+            subscribeToWildcard("#")
+        } else {
+            _subscribeMode.value = SubscribeMode.PATH
+            _pathFilter.value = filter
+            persistModeToLastSettings()
+            subscribeToWildcard("$filter/#")
+        }
+    }
+
+    fun subscribeModeName(): String = _subscribeMode.value.name.lowercase()
+
+    fun pathFilterValue(): String = _pathFilter.value
+
+    /** Loads mode + filter from persisted connection settings (lastSettings mechanism). */
+    fun restoreMode(subscribeMode: String?, subscribeFilter: String?) {
+        val filter = subscribeFilter ?: ""
+        if (subscribeMode == "path" && filter.isNotBlank()) {
+            _subscribeMode.value = SubscribeMode.PATH
+            _pathFilter.value = filter
+        } else {
+            _subscribeMode.value = SubscribeMode.WILDCARD
+            _pathFilter.value = ""
+        }
+    }
+
+    /** Mirrors the current mode into lastSettings so reconnect()/save use it. */
+    private fun persistModeToLastSettings() {
+        lastSettings = lastSettings?.copy(
+            subscribeMode = _subscribeMode.value.name.lowercase(),
+            subscribeFilter = _pathFilter.value
+        )
+    }
+
+    /** "MBusino/#" / "MBusino/" / "MBusino" -> "MBusino"; blank -> null. */
+    private fun normalizePath(path: String): String? {
+        var p = path.trim()
+        if (p.isBlank()) return null
+        if (p.endsWith("/#")) p = p.dropLast(2)
+        else if (p.endsWith("#")) p = p.dropLast(1)
+        p = p.trimEnd('/')
+        return p.ifBlank { null }
+    }
+
+    fun clearTree() {
+        topicMessages.clear()
+        _topicTree.value = TopicNode("root", "")
+    }
+
     fun publish(topic: String, payload: String, qos: Int = 1, retain: Boolean = false): Boolean {
         return try {
             val message = MqttMessage(payload.toByteArray()).apply {
@@ -258,11 +383,11 @@ class MqttManager private constructor() {
             Log.e(TAG, "Error disconnecting", e)
         }
         client = null
-        topicMessages.clear()
-        _topicTree.value = TopicNode("root", "")
+        clearTree()
         _connectionState.value = ConnectionState.DISCONNECTED
         _currentConnection.value = null
         _subscribedTopics.value = emptySet()
+        _reconnectDecision.value = null
     }
 
     fun clearError() {
