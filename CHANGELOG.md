@@ -2,6 +2,19 @@
 
 All notable changes to MQTT Browser will be documented in this file.
 
+## [1.21] - 2026-09-23
+
+### Added
+- Path-based subscribe mode: subscribe-FAB toggles between `+` (wildcard `#`) and `#` (single path `<path>/#`)
+- Subscribe dialog with wildcard-deactivation warning when entering a path manually via FAB
+- Long-press on any tree node (leaf and parent): menu with "Nur auf diesen Pfad subscriben" and "Retained löschen" (nodes without retained message open the subscribe confirmation directly)
+- Reconnect popup in path mode: choose wildcard (Ja) or keep the saved path filter (Nein) — nothing is subscribed before the decision
+
+### Changed
+- Entering path mode unsubscribes `#`, clears the topic tree (it rebuilds from the new filter incl. retained messages) and subscribes `<path>/#`
+- Switching back to wildcard unsubscribes the path filter, subscribes `#` and keeps the tree
+- Subscribe mode and path filter persisted with the connection settings (lastSettings)
+
 ## [1.20] - 2026-09-23
 
 ### Fixed

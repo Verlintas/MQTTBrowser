@@ -11,7 +11,11 @@ data class ConnectionSettings(
     val password: String = "",
     val tls: Boolean = false,
     val trustAll: Boolean = false,
-    val caCertUri: String = ""
+    val caCertUri: String = "",
+    // v1.21: subscription mode persisted with the connection ("wildcard" | "path");
+    // null = old saved connection without this field -> wildcard mode
+    val subscribeMode: String? = null,
+    val subscribeFilter: String? = null
 ) {
     val fullUrl: String
         get() = "${if (tls) "ssl" else "tcp"}://$brokerUrl:$port"

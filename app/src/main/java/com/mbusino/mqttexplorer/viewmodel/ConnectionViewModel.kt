@@ -123,7 +123,9 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             password = _password.value,
             tls = _tls.value,
             trustAll = _trustAll.value,
-            caCertUri = _caCertUri.value
+            caCertUri = _caCertUri.value,
+            subscribeMode = mqttManager.subscribeModeName(),
+            subscribeFilter = mqttManager.pathFilterValue()
         )
         mqttManager.connect(settings)
     }
@@ -145,6 +147,8 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
         _tls.value = settings.tls
         _trustAll.value = settings.trustAll
         _caCertUri.value = settings.caCertUri
+        // v1.21: adopt the connection's persisted subscription mode
+        mqttManager.restoreMode(settings.subscribeMode, settings.subscribeFilter)
     }
 
     fun saveCurrentConnection() {
@@ -156,7 +160,9 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             password = _password.value,
             tls = _tls.value,
             trustAll = _trustAll.value,
-            caCertUri = _caCertUri.value
+            caCertUri = _caCertUri.value,
+            subscribeMode = mqttManager.subscribeModeName(),
+            subscribeFilter = mqttManager.pathFilterValue()
         )
         ConnectionStorage.saveConnection(prefs, settings)
         _savedConnections.value = ConnectionStorage.getConnections(prefs)

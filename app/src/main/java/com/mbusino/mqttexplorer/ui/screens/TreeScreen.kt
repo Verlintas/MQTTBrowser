@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
@@ -48,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.mbusino.mqttexplorer.data.TopicNode
 import com.mbusino.mqttexplorer.mqtt.ConnectionState
+import com.mbusino.mqttexplorer.mqtt.SubscribeMode
 import com.mbusino.mqttexplorer.ui.components.TopicTreeItem
 import com.mbusino.mqttexplorer.viewmodel.ConnectionViewModel
 import com.mbusino.mqttexplorer.ui.theme.ConnectedGreen
@@ -65,6 +67,8 @@ fun TreeScreen(
     val expandedNodes by viewModel.expandedNodes.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val connectionState by connectionViewModel.connectionState.collectAsState()
+    val subscribeMode by viewModel.subscribeMode.collectAsState()
+    val reconnectDecision by viewModel.reconnectDecision.collectAsState()
     var showSubscribeDialog by remember { mutableStateOf(false) }
     var subscribeTopic by remember { mutableStateOf("") }
     var showPublishDialog by remember { mutableStateOf(false) }
@@ -74,6 +78,8 @@ fun TreeScreen(
     var publishRetain by remember { mutableStateOf(false) }
     var publishResult by remember { mutableStateOf<String?>(null) }
     var showDeleteRetainedDialog by remember { mutableStateOf<String?>(null) }
+    var showRetainedMenu by remember { mutableStateOf<String?>(null) }
+    var subscribeConfirmPath by remember { mutableStateOf<String?>(null) }
 
     BackHandler {
         onDisconnect()
@@ -140,8 +146,21 @@ fun TreeScreen(
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Publish message")
                     }
-                    FloatingActionButton(onClick = { showSubscribeDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Subscribe to topic")
+                    FloatingActionButton(
+                        onClick = {
+                            if (subscribeMode == SubscribeMode.PATH) {
+                                // Path mode: tap "#" -> back to wildcard immediately, no confirmation
+                                viewModel.switchToWildcardMode()
+                            } else {
+                                showSubscribeDialog = true
+                            }
+                        }
+                    ) {
+                        if (subscribeMode == SubscribeMode.PATH) {
+                            Icon(Icons.Default.Tag, contentDescription = "Wildcard aktiv — zurück zur Wildcard")
+                        } else {
+                            Icon(Icons.Default.Add, contentDescription = "Subscribe to topic")
+                        }
                     }
                 }
             }
@@ -226,7 +245,13 @@ fun TreeScreen(
                         onToggle = { viewModel.toggleNode(it) },
                         onNavigate = { path, name -> onTopicClick(path, name) },
                         onNavigateInternal = { path, name -> onTopicClick(path, name) },
-                        onLongPress = { path -> showDeleteRetainedDialog = path }
+                        onLongPress = { node ->
+                            if (node.lastMessage?.isRetained == true) {
+                                showRetainedMenu = node.fullPath
+                            } else {
+                                subscribeConfirmPath = node.fullPath
+                            }
+                        }
                     )
                 }
             }
@@ -239,20 +264,30 @@ fun TreeScreen(
             onDismissRequest = { showSubscribeDialog = false },
             title = { Text("Subscribe to Topic") },
             text = {
-                OutlinedTextField(
-                    value = subscribeTopic,
-                    onValueChange = { subscribeTopic = it },
-                    label = { Text("Topic or wildcard") },
-                    placeholder = { Text("e.g. MBusino/#") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column {
+                    OutlinedTextField(
+                        value = subscribeTopic,
+                        onValueChange = { subscribeTopic = it },
+                        label = { Text("Topic path") },
+                        placeholder = { Text("e.g. MBusino/tele") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    val previewPath = subscribeTopic.trim()
+                        .removeSuffix("/#").removeSuffix("#").trimEnd('/')
+                        .ifBlank { "Pfad" }
+                    Text(
+                        text = "⚠️ Die Wildcard # wird dabei deaktiviert. Du empfangst nur noch $previewPath/#.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (subscribeTopic.isNotBlank()) {
-                            viewModel.subscribe(subscribeTopic)
+                        if (viewModel.switchToPathMode(subscribeTopic)) {
                             subscribeTopic = ""
                             showSubscribeDialog = false
                         }
@@ -267,6 +302,82 @@ fun TreeScreen(
                     subscribeTopic = ""
                 }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Long-press on a node WITH retained message: choose subscribe or delete
+    showRetainedMenu?.let { path ->
+        AlertDialog(
+            onDismissRequest = { showRetainedMenu = null },
+            title = { Text("Aktion wählen") },
+            text = {
+                Text("Dieser Pfad hat eine retained Nachricht:\n\n$path")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRetainedMenu = null
+                    subscribeConfirmPath = path
+                }) {
+                    Text("📂 Nur auf diesen Pfad subscriben")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        showRetainedMenu = null
+                        showDeleteRetainedDialog = path
+                    }) {
+                        Text("🗑 Retained löschen")
+                    }
+                    TextButton(onClick = { showRetainedMenu = null }) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        )
+    }
+
+    // Subscribe confirmation for a fixed path (long-press on node WITHOUT retained message,
+    // or after choosing "Nur auf diesen Pfad subscriben" in the menu above)
+    subscribeConfirmPath?.let { path ->
+        AlertDialog(
+            onDismissRequest = { subscribeConfirmPath = null },
+            title = { Text("Subscribe to Path") },
+            text = {
+                Text("⚠️ Die Wildcard # wird dabei deaktiviert. Du empfangst nur noch $path/#.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.switchToPathMode(path)
+                    subscribeConfirmPath = null
+                }) {
+                    Text("Subscribe")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { subscribeConfirmPath = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Reconnect in path mode: ask Ja/Nein — nothing is subscribed while undecided
+    reconnectDecision?.let { filter ->
+        AlertDialog(
+            onDismissRequest = { /* undecided: stays open, no subscribe */ },
+            title = { Text("Pfad-Modus aktiv") },
+            text = { Text("Keine Wildcard gesetzt — nur $filter/# aktiv. Wildcard setzen?") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.resolveReconnectDecision(true) }) {
+                    Text("Ja")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.resolveReconnectDecision(false) }) {
+                    Text("Nein")
                 }
             }
         )
@@ -401,7 +512,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.renderTreeNodes(
     onToggle: (String) -> Unit,
     onNavigate: (String, String) -> Unit,
     onNavigateInternal: (String, String) -> Unit,
-    onLongPress: (String) -> Unit = {}
+    onLongPress: (TopicNode) -> Unit = {}
 ) {
     for (node in nodes) {
         val isExpanded = expandedNodes.contains(node.fullPath) || node.fullPath.isEmpty()
@@ -413,7 +524,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.renderTreeNodes(
                 isExpanded = isExpanded,
                 onToggle = { onToggle(node.fullPath) },
                 onNavigate = { onNavigate(node.fullPath, node.name) },
-                onLongPress = if (!hasChildren) { { onLongPress(node.fullPath) } } else null
+                onLongPress = { onLongPress(node) }
             )
         }
         if (isExpanded && node.children.isNotEmpty()) {
