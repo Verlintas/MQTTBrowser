@@ -14,6 +14,7 @@ All notable changes to MQTT Browser will be documented in this file.
 - Entering path mode unsubscribes `#`, clears the topic tree (it rebuilds from the new filter incl. retained messages) and subscribes `<path>/#`
 - Switching back to wildcard unsubscribes the path filter, subscribes `#` and keeps the tree
 - Subscribe mode and path filter persisted with the connection settings (lastSettings)
+- Remaining German UI strings translated to English (full English i18n pass)
 
 ## [1.20] - 2026-09-23
 

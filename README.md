@@ -4,7 +4,7 @@
   <img src="logo.png" width="128" alt="MQTT Browser Logo">
 </p>
 
-[![version](https://img.shields.io/badge/version-1.19-brightgreen.svg)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.21-brightgreen.svg)](CHANGELOG.md)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 A native Android MQTT client that provides a structured topic browser with message history.
@@ -24,6 +24,11 @@ Inspired by [MQTT Explorer](https://github.com/thomasnordquist/MQTT-Explorer) by
 - **Search & Filter** — Filter the topic tree by name
 - **MQTT Publish** — Send messages to any topic with QoS (0/1/2) and retain flag; topic pre-filled from detail view
 - **Subscribe / Unsubscribe** — Add wildcard subscriptions (e.g. `MBusino/#`) via FAB
+- **Two Subscribe Modes** — Wildcard `#` (default) or single-path mode `<path>/#`; mode switches apply live, no reconnect needed
+- **Subscribe FAB Mode Indicator** — FAB shows `+` (wildcard) / `#` (path); tap `#` to switch back to wildcard immediately
+- **Subscribe Dialog Warning** — warns that the wildcard subscription will be deactivated when you enter a path manually
+- **Long-Press Subscribe** — long-press any tree node → "Subscribe to this path only" (plus "Delete retained" when a retained message exists); entering path mode clears the tree so it rebuilds from the new filter
+- **Reconnect Path Prompt** — reconnecting in path mode asks Yes/No whether to re-enable the wildcard
 - **Connection Manager** — Save and reuse broker connections (encrypted with AES256 via Android Keystore)
 - **Auto-Reconnect** — Reconnects automatically when the app returns from background
 - **Manual Reconnect** — Reconnect button when connection is lost
